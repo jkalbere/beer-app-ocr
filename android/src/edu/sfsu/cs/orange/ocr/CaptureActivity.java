@@ -19,6 +19,10 @@ package edu.sfsu.cs.orange.ocr;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import org.json.JSONObject;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -59,7 +63,11 @@ import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import beer.query.BeerQuery;
 
+import com.androidquery.AQuery;
+import com.androidquery.callback.AjaxCallback;
+import com.androidquery.callback.AjaxStatus;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
 import edu.sfsu.cs.orange.ocr.camera.CameraManager;
@@ -197,6 +205,10 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   private boolean isEngineReady;
   private boolean isPaused;
   private static boolean isFirstLaunch; // True if this is the first time the app is being run
+
+  private BeerQuery beerQuery;
+  private AQuery aq;
+  
 
   Handler getHandler() {
     return handler;
@@ -336,6 +348,9 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     });
     
     isEngineReady = false;
+    aq = new AQuery(this);
+    beerQuery = new BeerQuery();
+    
   }
 
   @Override
@@ -752,6 +767,20 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     sourceLanguageTextView.setText(sourceLanguageReadable);
     TextView ocrResultTextView = (TextView) findViewById(R.id.ocr_result_text_view);
     ocrResultTextView.setText(ocrResult.getText());
+    
+    
+    String rawText = ocrResult.getText();
+    rawText.split("\n");
+    String [] beerNames =  rawText.split("\n");
+   
+    for (String beer : beerNames){
+        beerQuery.asyncBeerFetch(beer, aq);
+    }
+  
+    
+    ocrResultTextView.setText(aq.getText());
+    
+    
     // Crudely scale betweeen 22 and 32 -- bigger font for shorter text
     int scaledSize = Math.max(22, 32 - ocrResult.getText().length() / 4);
     ocrResultTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSize);
@@ -759,28 +788,13 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     TextView translationLanguageLabelTextView = (TextView) findViewById(R.id.translation_language_label_text_view);
     TextView translationLanguageTextView = (TextView) findViewById(R.id.translation_language_text_view);
     TextView translationTextView = (TextView) findViewById(R.id.translation_text_view);
-    if (isTranslationActive) {
-      // Handle translation text fields
-      translationLanguageLabelTextView.setVisibility(View.VISIBLE);
-      translationLanguageTextView.setText(targetLanguageReadable);
-      translationLanguageTextView.setTypeface(Typeface.defaultFromStyle(Typeface.NORMAL), Typeface.NORMAL);
-      translationLanguageTextView.setVisibility(View.VISIBLE);
-
-      // Activate/re-activate the indeterminate progress indicator
-      translationTextView.setVisibility(View.GONE);
-      progressView.setVisibility(View.VISIBLE);
-      setProgressBarVisibility(true);
-      
-      // Get the translation asynchronously
-      new TranslateAsyncTask(this, sourceLanguageCodeTranslation, targetLanguageCodeTranslation, 
-          ocrResult.getText()).execute();
-    } else {
+    
       translationLanguageLabelTextView.setVisibility(View.GONE);
       translationLanguageTextView.setVisibility(View.GONE);
       translationTextView.setVisibility(View.GONE);
       progressView.setVisibility(View.GONE);
       setProgressBarVisibility(false);
-    }
+  
     return true;
   }
   
@@ -1223,4 +1237,5 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 	    .setPositiveButton( "Done", new FinishListener(this))
 	    .show();
   }
+
 }
